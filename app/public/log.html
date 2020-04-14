@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>Logs</title>
+  <style>
+    html,
+    body {
+      background: #202010;
+      color: #ddd;
+    }
+
+    pre {
+      white-space: pre-wrap;
+      /* Since CSS 2.1 */
+      white-space: -moz-pre-wrap;
+      /* Mozilla, since 1999 */
+      white-space: -pre-wrap;
+      /* Opera 4-6 */
+      white-space: -o-pre-wrap;
+      /* Opera 7 */
+      word-wrap: break-word;
+      /* Internet Explorer 5.5+ */
+      margin: 0;
+      padding: 0;
+    }
+
+    #messages {
+      font-family:monospace;
+    }
+
+    #menu {
+      z-index: 9;
+      position: fixed;
+      bottom: 0;
+      right: 0;
+    }
+
+    #menu button {
+      border: 1px solid #550;
+      padding: 2px 8px;
+      margin: 2px;
+      background: #f0f0f0;
+    }
+
+    #menu button:hover {
+      background: #c0c0c0;
+    }
+  </style>
+</head>
+
+<body>
+  <div style="padding: 20px;">
+    <div id="messages"></div>
+    <div style="padding-top: 20px;display:none;">
+      <form onsubmit="return sendMessage()">
+        <input id="message" type="text" style="width: 70%;"><button style="width: 25%">Send</button>
+      </form>
+    </div>
+    <div id="menu">
+      <button id="scroll" onclick="toggle_scroll()">滚动（开）</button>
+    </div>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/ansi_up@4.0.3/ansi_up.min.js"></script>
+  <script>
+    var scroll = true;
+    var ansi_up = new AnsiUp;
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const fn = urlParams.get('file');
+    const exception = urlParams.get('exception');
+    const raw = urlParams.get('raw');
+    const user_id = urlParams.get('user_id');
+    const uuid = urlParams.get('uuid');
+    const url = urlParams.get('url');
+    const block_size = urlParams.get('block_size');
+    const block_range = urlParams.get('block_range');
+
+    var ws = new WebSocket("ws://yaoyingli.com:9000/websocket");
+    //var ws = new WebSocket("ws://127.0.0.1:9001/websocket");
+    ws.onopen = function (event) {
+      var payload = {
+        "type": "client",
+        "file": fn
+      }
+      if(exception=='True'){
+        payload["exception"] = true
+      }
+      if(raw=='True'){
+        payload["raw"] = true
+      }
+      if(user_id!=''){
+        payload["user_id"] = user_id
+      }
+      if(uuid!=''){
+        payload["uuid"] = uuid
+      }
+      if(url!=''){
+        payload["url"] = url
+      }
+      if(block_size!=''){
+        payload["block_size"] = block_size
+      }      
+      if(block_range!=''){
+        payload["block_range"] = block_range
+      }
+      // Make the request to the WebSocket.
+      ws.send(JSON.stringify(payload));
+    }
+    ws.onmessage = function (evt) {
+      // Create a div with the format `user: message`.
+      var messageBox = document.createElement("pre");      
+      if(raw=='True'){
+          messageBox.innerText = evt.data;
+          messageBox.innerHTML = ansi_up.ansi_to_html(evt.data);
+      }else{
+          const row_log = JSON.parse(evt.data);
+          var html = "<span id=\"s_"+ row_log.uuid +"\" style='background:#ff7800' onclick='toggle_log(\""+row_log.uuid+"\")'>[+]</span>"
+          if(row_log.exception){
+            html += ansi_up.ansi_to_html(row_log.list[0].replace("[36m","[41m"))
+          }else{
+            html += ansi_up.ansi_to_html(row_log.list[0])
+          }
+          html += "<div style='display:none' id=\"d_"+ row_log.uuid +"\">"
+          let len = row_log.list.length
+          for (let index = 1; index < len; index++) {
+            html += ansi_up.ansi_to_html(row_log.list[index])
+          }
+          html += "</div>"
+          messageBox.innerHTML = html;
+      }
+      document.getElementById("messages").appendChild(messageBox);
+      if (scroll) {
+        window.scrollTo(0, document.body.scrollHeight);
+      }      
+    }
+
+    function toggle_log(id){
+      var s = document.getElementById("s_"+id);
+      var d = document.getElementById("d_"+id);  
+	    if("none" == d.style.display){
+        d.style.display = "block";
+        s.innerText = "[-]"
+	    }else{
+        d.style.display = "none";
+        s.innerText = "[+]"
+      }
+    }
+
+    function toggle_scroll() {
+      scroll = !scroll;
+      document.querySelector("#scroll").innerText = scroll ? "滚动（开）" : "滚动（关）";
+    }
+    function sendMessage() {
+      var messageInput = document.getElementById("message");
+      var message = messageInput.value;
+      var payload = {
+        "type": "client",
+        "file": username
+      }
+      // Make the request to the WebSocket.
+      ws.send(JSON.stringify(payload));
+      // Clear the message from the input.
+      messageInput.value = "";
+      return false;
+    }
+
+  </script>
+</body>
+</html>

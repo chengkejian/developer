@@ -1,0 +1,9 @@
+.container {
+}
+.content {
+	display: flex; font-size: 32px; justify-content: center;
+	color: #111;text-decoration: none;
+	flex:1;
+	background-color: #eee;
+	border-bottom: 1px solid #555;
+}
